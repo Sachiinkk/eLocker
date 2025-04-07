@@ -4,7 +4,8 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitInstance {
-    private const val BASE_URL = "https://jsonplaceholder.typicode.com/todos/" // Replace with actual base URL
+    private const val BASE_URL = "https://reqres.in/api/"
+    // Replace with actual base URL
 
     val api: ApiService by lazy {
         Retrofit.Builder()
