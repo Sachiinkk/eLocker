@@ -1,12 +1,12 @@
-
 package com.example.elocker.repository
 
-import com.example.elocker.model.User
+import com.example.elocker.data.remote.FormData
+import com.example.elocker.data.remote.RetrofitInstance
+import retrofit2.Response
 import javax.inject.Inject
 
 class UserRepository @Inject constructor() {
-    fun registerUser(user: User) {
-        // mock implementation, replace with network/db logic
-        println("User Registered: $user")
+    suspend fun submitForm(data: FormData): Response<Void> {
+        return RetrofitInstance.api.submitForm(data)
     }
 }
