@@ -98,3 +98,4 @@ class RegistrationViewModel @Inject constructor(
         aadhaarNumber.value = ""
     }
 }
+
