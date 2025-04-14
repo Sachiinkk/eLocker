@@ -2,6 +2,7 @@ package com.example.elocker.ui.screens
 
 import android.app.DatePickerDialog
 import android.widget.DatePicker
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.FocusInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -25,18 +26,30 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.example.elocker.viewmodel.RegistrationViewModel
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filterIsInstance
-import androidx.compose.foundation.clickable
 import androidx.compose.runtime.snapshotFlow
 import java.util.*
 import java.util.regex.Pattern
-import androidx.compose.material3.ExperimentalMaterial3Api
+
+@Composable
+fun LoadingScreen() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator()
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RegistrationScreen(viewModel: RegistrationViewModel = hiltViewModel()) {
+fun RegistrationScreen(
+    navController: NavController,
+    viewModel: RegistrationViewModel = hiltViewModel(),
+    onSubmitClick: () -> Unit
+) {
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
 
@@ -88,6 +101,7 @@ fun RegistrationScreen(viewModel: RegistrationViewModel = hiltViewModel()) {
             viewModel.clearMessage()
         }
     }
+
     val inputColors = TextFieldDefaults.outlinedTextFieldColors(
         focusedBorderColor = Color.Gray,
         unfocusedBorderColor = Color.Gray,
@@ -100,7 +114,7 @@ fun RegistrationScreen(viewModel: RegistrationViewModel = hiltViewModel()) {
             TopAppBar(
                 title = { Text("Punjab e-Locker") },
                 navigationIcon = {
-                    IconButton(onClick = { /* Handle back nav */ }) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
@@ -136,6 +150,7 @@ fun RegistrationScreen(viewModel: RegistrationViewModel = hiltViewModel()) {
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // Other fields would go here as needed
             OutlinedTextField(
                 value = viewModel.fatherName.value,
                 onValueChange = {
@@ -155,6 +170,7 @@ fun RegistrationScreen(viewModel: RegistrationViewModel = hiltViewModel()) {
                 placeholder = { Text("Enter Father Name") },
                 modifier = Modifier.fillMaxWidth()
             )
+
 
             OutlinedTextField(
                 value = viewModel.motherName.value,
@@ -176,25 +192,37 @@ fun RegistrationScreen(viewModel: RegistrationViewModel = hiltViewModel()) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            OutlinedTextField(
-                value = viewModel.dateOfBirth.value,
-                onValueChange = {},
-                interactionSource = dobInteractionSource,
-                isError = dobError != null,
-                supportingText = {
-                    if (dobError != null) Text(dobError!!, color = MaterialTheme.colorScheme.error)
-                },
-                placeholder = { Text("Select Date") },
-                label = { Text("Date of Birth") },
-                trailingIcon = {
-                    IconButton(onClick = { datePicker.show() }) {
-                        Icon(Icons.Default.DateRange, contentDescription = null)
-                    }
-                },
-                readOnly = true,
-                colors = inputColors,
-                modifier = Modifier.fillMaxWidth()
-            )
+
+
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { datePicker.show() } // Show calendar on field click
+            ) {
+                OutlinedTextField(
+                    value = viewModel.dateOfBirth.value,
+                    onValueChange = {},
+                    interactionSource = dobInteractionSource,
+                    isError = dobError != null,
+                    supportingText = {
+                        if (dobError != null) Text(dobError!!, color = MaterialTheme.colorScheme.error)
+                    },
+                    placeholder = { Text("Select Date") },
+                    label = { Text("Date of Birth") },
+                    trailingIcon = {
+                        IconButton(onClick = { datePicker.show() }) {
+                            Icon(Icons.Default.DateRange, contentDescription = null)
+                        }
+                    },
+                    readOnly = true,
+                    colors = inputColors,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+
+
 
             ExposedDropdownMenuBox(
                 expanded = viewModel.genderExpanded.value,
@@ -263,6 +291,10 @@ fun RegistrationScreen(viewModel: RegistrationViewModel = hiltViewModel()) {
                 )
             }
 
+
+
+
+
             val allValid = nameError.value == null &&
                     fatherNameError.value == null &&
                     motherNameError.value == null &&
@@ -277,10 +309,12 @@ fun RegistrationScreen(viewModel: RegistrationViewModel = hiltViewModel()) {
 
             Button(
                 onClick = {
-                    if (allValid)
+                    if (allValid) {
                         viewModel.submitForm()
-                    else
+                        onSubmitClick()
+                    } else {
                         viewModel.showValidationError()
+                    }
                 },
                 enabled = allValid && !isLoading,
                 modifier = Modifier
@@ -301,4 +335,3 @@ fun RegistrationScreen(viewModel: RegistrationViewModel = hiltViewModel()) {
         }
     }
 }
-
