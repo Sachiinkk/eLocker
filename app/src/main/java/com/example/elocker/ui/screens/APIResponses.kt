@@ -1,4 +1,6 @@
 package com.example.elocker.ui.screens
+import android.util.Log
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,24 +20,20 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 fun APIResponses(jsonResponse: String, navController: NavController) {
     val parsedData = remember(jsonResponse) {
         try {
+            Log.d("API_Response", jsonResponse) // Debug print
             val json = JSONObject(jsonResponse)
-            val dataArray = json.getJSONArray("data")
-            val list = mutableListOf<Map<String, String>>()
-            for (i in 0 until dataArray.length()) {
-                val obj = dataArray.getJSONObject(i)
-                list.add(
-                    mapOf(
-                        "id" to obj.getInt("id").toString(),
-                        "name" to obj.getString("name"),
-                        "year" to obj.getInt("year").toString(),
-                        "color" to obj.getString("color"),
-                        "pantone" to obj.getString("pantone_value")
-                    )
-                )
+
+            if (json.has("data")) {
+                val dataArray = json.getJSONArray("data")
+                List(dataArray.length()) { i ->
+                    val obj = dataArray.getJSONObject(i)
+                    "ID: ${obj.optInt("id")}, Name: ${obj.optString("name")}, Year: ${obj.optInt("year")}, Color: ${obj.optString("color")}"
+                }
+            } else {
+                listOf("No 'data' key found in response")
             }
-            list
         } catch (e: Exception) {
-            emptyList()
+            listOf("Failed to parse response: ${e.message}")
         }
     }
 
@@ -52,26 +50,12 @@ fun APIResponses(jsonResponse: String, navController: NavController) {
         }
     ) { padding ->
         LazyColumn(
-            modifier = Modifier
-                .padding(padding)
-                .padding(16.dp)
-                .fillMaxSize()
+            contentPadding = padding,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(16.dp)
         ) {
-            items(parsedData) { item ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(android.graphics.Color.parseColor(item["color"] ?: "#FFFFFF")))
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("ID: ${item["id"]}")
-                        Text("Name: ${item["name"]}")
-                        Text("Year: ${item["year"]}")
-                        Text("Color: ${item["color"]}")
-                        Text("Pantone: ${item["pantone"]}")
-                    }
-                }
+            items(parsedData) {
+                Text(it, color = Color.White)
             }
         }
     }

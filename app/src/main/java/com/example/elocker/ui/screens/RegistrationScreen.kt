@@ -195,31 +195,61 @@ fun RegistrationScreen(
 
 
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { datePicker.show() } // Show calendar on field click
-            ) {
-                OutlinedTextField(
-                    value = viewModel.dateOfBirth.value,
-                    onValueChange = {},
-                    interactionSource = dobInteractionSource,
-                    isError = dobError != null,
-                    supportingText = {
-                        if (dobError != null) Text(dobError!!, color = MaterialTheme.colorScheme.error)
-                    },
-                    placeholder = { Text("Select Date") },
-                    label = { Text("Date of Birth") },
-                    trailingIcon = {
-                        IconButton(onClick = { datePicker.show() }) {
-                            Icon(Icons.Default.DateRange, contentDescription = null)
+
+            OutlinedTextField(
+                value = viewModel.dateOfBirth.value,
+                onValueChange = {
+                    viewModel.onDateOfBirthChange(it)
+
+                    val regex = Regex("^\\d{1,2}/\\d{1,2}/\\d{4}$")
+                    if (!regex.matches(it)) {
+                        dobError = "Use format DD/MM/YYYY"
+                    } else {
+                        try {
+                            val parts = it.split("/")
+                            val day = parts[0].toInt()
+                            val month = parts[1].toInt() - 1
+                            val year = parts[2].toInt()
+
+                            val selectedDate = Calendar.getInstance().apply {
+                                set(year, month, day, 0, 0, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }.time
+
+                            val today = Calendar.getInstance().apply {
+                                set(Calendar.HOUR_OF_DAY, 0)
+                                set(Calendar.MINUTE, 0)
+                                set(Calendar.SECOND, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }.time
+
+                            dobError = if (selectedDate.after(today)) {
+                                "DOB must be before today"
+                            } else null
+                        } catch (e: Exception) {
+                            dobError = "Invalid date"
                         }
-                    },
-                    readOnly = true,
-                    colors = inputColors,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+                    }
+                },
+                interactionSource = dobInteractionSource,
+                isError = dobError != null,
+                supportingText = {
+                    if (dobError != null) Text(dobError!!, color = MaterialTheme.colorScheme.error)
+                },
+                placeholder = { Text("Select or Enter DOB (DD/MM/YYYY)") },
+                label = { Text("Date of Birth") },
+                trailingIcon = {
+                    IconButton(onClick = { datePicker.show() }) {
+                        Icon(Icons.Default.DateRange, contentDescription = null)
+                    }
+                },
+                readOnly = false, // allow manual typing
+                colors = inputColors,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+
+
 
 
 
@@ -310,8 +340,9 @@ fun RegistrationScreen(
             Button(
                 onClick = {
                     if (allValid) {
-                        viewModel.submitForm()
-                        onSubmitClick()
+                        viewModel.submitForm {
+                            onSubmitClick()
+                        }
                     } else {
                         viewModel.showValidationError()
                     }
