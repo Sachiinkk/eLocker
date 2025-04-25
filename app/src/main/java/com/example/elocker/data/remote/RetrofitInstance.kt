@@ -4,7 +4,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitInstance {
-    private const val BASE_URL = "https://reqres.in/api/1/"
+    private const val BASE_URL = "https://esewadev.punjab.gov.in/common/api/"
     // Replace with actual base URL
 
     val api: ApiService by lazy {

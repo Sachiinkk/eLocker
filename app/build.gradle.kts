@@ -74,4 +74,9 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+
+    implementation ("org.bouncycastle:bcprov-jdk15to18:1.70")
+    implementation("androidx.compose.ui:ui-text:1.5.0") // or match your Compose version
+
 }
