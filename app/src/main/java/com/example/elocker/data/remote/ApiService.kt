@@ -49,7 +49,7 @@ interface ApiService {
     suspend fun sendOtp(@Body request: AadhaarRequest): Response<Void>
 
     // Step 3: Verify OTP entered by user
-    @POST("HealthaadhaarValidate/AadhaarSendOtp/")
+    @POST("HealthaadhaarValidate/AadhaarOTPBasedEkyc/")
     suspend fun verifyOtp(@Body request: OtpVerificationRequest): Response<Void>
 
 

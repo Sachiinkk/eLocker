@@ -75,6 +75,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
 
     implementation ("org.bouncycastle:bcprov-jdk15to18:1.70")
     implementation("androidx.compose.ui:ui-text:1.5.0") // or match your Compose version

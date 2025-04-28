@@ -8,7 +8,7 @@ import java.security.spec.X509EncodedKeySpec
 import javax.crypto.Cipher
 import android.util.Base64
 
-fun encryptAadhaar(aadhaar: String, base64PublicKey: String): String {
+fun encryptAadhaar(Aadhaar: String, base64PublicKey: String): String {
     Security.addProvider(BouncyCastleProvider())
 
     val keyBytes = Base64.decode(base64PublicKey.trim(), Base64.DEFAULT)
@@ -18,6 +18,6 @@ fun encryptAadhaar(aadhaar: String, base64PublicKey: String): String {
     val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
     cipher.init(Cipher.ENCRYPT_MODE, publicKey)
 
-    val encryptedBytes = cipher.doFinal(aadhaar.trim().toByteArray())
+    val encryptedBytes = cipher.doFinal(Aadhaar.trim().toByteArray())
     return Base64.encodeToString(encryptedBytes, Base64.NO_WRAP)
 }

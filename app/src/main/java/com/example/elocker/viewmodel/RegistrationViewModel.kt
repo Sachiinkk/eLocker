@@ -1,19 +1,19 @@
 package com.example.elocker.viewmodel
-import android.util.Log
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.elocker.data.remote.FormData
+import com.example.elocker.data.remote.OtpVerificationRequest
 import com.example.elocker.repository.UserRepository
+import com.example.elocker.utils.PUBLIC_KEY_FROM_SERVER
+import com.example.elocker.utils.encryptAadhaar
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlinx.coroutines.flow.MutableStateFlow
-import com.example.elocker.data.remote.OtpVerificationRequest
-import com.example.elocker.data.remote.AadhaarRequest
-import com.example.elocker.utils.encryptAadhaar
-import com.example.elocker.utils.PUBLIC_KEY_FROM_SERVER
+
 @HiltViewModel
 class RegistrationViewModel @Inject constructor(
     private val repository: UserRepository
@@ -27,61 +27,28 @@ class RegistrationViewModel @Inject constructor(
     val genderExpanded = mutableStateOf(false)
     val aadhaarNumber = mutableStateOf("")
     val apiResponse = mutableStateOf("")
-
     val isLoading = mutableStateOf(false)
     val message = mutableStateOf<String?>(null)
     val isAadhaarAuthenticated = MutableStateFlow(false)
 
-    fun setAadhaarAuthenticated(value: Boolean) {
-        isAadhaarAuthenticated.value = value
-    }
+    var lastTxn = ""
+    var lastEncryptedAadhaar = ""
 
-    fun onNameChange(newName: String) {
-        name.value = newName
-    }
+    // ----------------- Input Change Functions -----------------
 
-    fun onFatherNameChange(newName: String) {
-        fatherName.value = newName
-    }
-
-    fun onMotherNameChange(newName: String) {
-        motherName.value = newName
-    }
-
-    fun onDateOfBirthChange(newDob: String) {
-        dateOfBirth.value = newDob
-    }
-
+    fun onNameChange(newName: String) { name.value = newName }
+    fun onFatherNameChange(newName: String) { fatherName.value = newName }
+    fun onMotherNameChange(newName: String) { motherName.value = newName }
+    fun onDateOfBirthChange(newDob: String) { dateOfBirth.value = newDob }
     fun onGenderSelect(selected: String) {
         gender.value = selected
         genderExpanded.value = false
     }
+    fun onGenderExpandToggle() { genderExpanded.value = !genderExpanded.value }
+    fun onAadhaarChange(newAadhaar: String) { aadhaarNumber.value = newAadhaar }
+    fun clearMessage() { message.value = null }
 
-    fun onGenderExpandToggle() {
-        genderExpanded.value = !genderExpanded.value
-    }
-
-    fun onAadhaarChange(newAadhaar: String) {
-        aadhaarNumber.value = newAadhaar
-    }
-
-    fun clearMessage() {
-        message.value = null
-    }
-    fun resendOtp() {
-        viewModelScope.launch {
-            isLoading.value = true
-            try {
-                val response = repository.sendOtp(lastEncryptedAadhaar)
-                message.value = if (response.isSuccessful) "OTP resent ✅" else "Failed to resend OTP"
-            } catch (e: Exception) {
-                message.value = "Resend error: ${e.message}"
-            } finally {
-                isLoading.value = false
-            }
-        }
-    }
-
+    // ----------------- Submit Form -----------------
 
     fun submitForm(onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
@@ -95,6 +62,17 @@ class RegistrationViewModel @Inject constructor(
                     gender = gender.value,
                     aadhaarNumber = aadhaarNumber.value
                 )
+
+                // ✅ Print Form Data to Console (without plain Aadhaar)
+                Log.d("FormSubmission", "---- Form Data ----")
+                Log.d("FormSubmission", "Full Name: ${data.name}")
+                Log.d("FormSubmission", "Father Name: ${data.fatherName}")
+                Log.d("FormSubmission", "Mother Name: ${data.motherName}")
+                Log.d("FormSubmission", "Date of Birth: ${data.dateOfBirth}")
+                Log.d("FormSubmission", "Gender: ${data.gender}")
+
+                val encryptedAadhaar = encryptAadhaar(data.aadhaarNumber, PUBLIC_KEY_FROM_SERVER)
+                Log.d("FormSubmission", "Encrypted Aadhaar: $encryptedAadhaar")
 
                 val response = repository.submitForm(data)
 
@@ -114,20 +92,16 @@ class RegistrationViewModel @Inject constructor(
             }
         }
     }
-    var lastTxn = ""
-    var lastEncryptedAadhaar = ""
 
-    fun authenticateAadhaar(
-        encryptedAadhaar: String,
-        onOtpSent: () -> Unit
-    ) {
+    // ----------------- Authenticate Aadhaar -----------------
+
+    fun authenticateAadhaar(encryptedAadhaar: String, onOtpSent: () -> Unit) {
         viewModelScope.launch {
-
             try {
                 isLoading.value = true
                 lastEncryptedAadhaar = encryptedAadhaar
                 val encrypted = encryptAadhaar(aadhaarNumber.value, PUBLIC_KEY_FROM_SERVER)
-                lastEncryptedAadhaar = encrypted // Store for OTP verification
+                lastEncryptedAadhaar = encrypted
 
                 val response = repository.authenticateAadhaar(encrypted)
                 Log.d("AadhaarResponse", response.code().toString())
@@ -136,7 +110,6 @@ class RegistrationViewModel @Inject constructor(
                 if (response.isSuccessful) {
                     val otpResponse = repository.sendOtp(encrypted)
                     if (otpResponse.isSuccessful) {
-                        // Assume txn is in headers or parse from body if needed
                         lastTxn = otpResponse.headers()["txn"] ?: ""
                         message.value = "OTP sent successfully"
                         onOtpSent()
@@ -154,10 +127,7 @@ class RegistrationViewModel @Inject constructor(
         }
     }
 
-
-    fun showValidationError() {
-        message.value = "Please fix the errors in the form."
-    }
+    // ----------------- Verify OTP -----------------
 
     fun verifyOtp(otp: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
@@ -178,7 +148,7 @@ class RegistrationViewModel @Inject constructor(
                     isAadhaarAuthenticated.value = true
                     onSuccess()
                 } else {
-                    message.value = "Invalid OTP"
+                    message.value = "Invalid OTP ❌"
                 }
             } catch (e: Exception) {
                 message.value = "Error: ${e.message}"
@@ -188,6 +158,23 @@ class RegistrationViewModel @Inject constructor(
         }
     }
 
+    // ----------------- Resend OTP -----------------
+
+    fun resendOtp() {
+        viewModelScope.launch {
+            isLoading.value = true
+            try {
+                val response = repository.sendOtp(lastEncryptedAadhaar)
+                message.value = if (response.isSuccessful) "OTP resent ✅" else "Failed to resend OTP"
+            } catch (e: Exception) {
+                message.value = "Resend error: ${e.message}"
+            } finally {
+                isLoading.value = false
+            }
+        }
+    }
+
+    // ----------------- Utility -----------------
 
     private fun clearForm() {
         name.value = ""
@@ -196,5 +183,9 @@ class RegistrationViewModel @Inject constructor(
         dateOfBirth.value = ""
         gender.value = ""
         aadhaarNumber.value = ""
+    }
+
+    fun showValidationError() {
+        message.value = "Please fix the errors in the form."
     }
 }
