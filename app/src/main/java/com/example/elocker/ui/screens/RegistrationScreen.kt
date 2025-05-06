@@ -32,6 +32,9 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.snapshotFlow
 import java.util.*
 import java.util.regex.Pattern
+import com.example.elocker.ui.screens.SuccessDialog
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,31 +43,39 @@ fun RegistrationScreen(
     viewModel: RegistrationViewModel = hiltViewModel(),
     onSubmitClick: () -> Unit
 ) {
+
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
-    val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val otpCooldown = viewModel.otpCooldown.value
+    val showSuccessDialog = viewModel.showSuccessDialog.value
 
     val isLoading = viewModel.isLoading.value
     val message = viewModel.message.value
     val isAuthenticated by viewModel.isAadhaarAuthenticated.collectAsStateWithLifecycle()
-
     val nameError = remember { mutableStateOf<String?>(null) }
     val fatherNameError = remember { mutableStateOf<String?>(null) }
     val motherNameError = remember { mutableStateOf<String?>(null) }
     val aadhaarError = remember { mutableStateOf<String?>(null) }
     var dobError by remember { mutableStateOf<String?>(null) }
     var showOtpCard by remember { mutableStateOf(false) }
-    var otpValue by remember { mutableStateOf("") }
+    val coroutineScope = rememberCoroutineScope()
 
+
+    var otpValue by remember { mutableStateOf("") }
+    val otpErrorMessage = viewModel.message.value
     val inputColors = TextFieldDefaults.outlinedTextFieldColors(
         focusedBorderColor = Color.Gray,
         unfocusedBorderColor = Color.Gray,
         errorBorderColor = Color.Red
     )
 
+
+    LaunchedEffect(viewModel.showOtpPopup.value) {
+        showOtpCard = viewModel.showOtpPopup.value
+    }
     val allValid by remember {
         derivedStateOf {
             nameError.value == null &&
@@ -98,6 +109,13 @@ fun RegistrationScreen(
                     }
                 }
             )
+            LaunchedEffect(otpErrorMessage) {
+                otpErrorMessage?.let {
+                    snackbarHostState.showSnackbar(it)
+                    viewModel.clearMessage()
+                }
+            }
+
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -254,26 +272,25 @@ fun RegistrationScreen(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Text(
-                        text = "AUTHENTICATE",
+                        text = if (otpCooldown > 0) "Please wait $otpCooldown sec" else "AUTHENTICATE",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.clickable {
+                        color = if (otpCooldown > 0) Color.Gray else Color.Blue,
+                        modifier = Modifier.clickable(enabled = otpCooldown == 0) {
                             val aadhaarValid = Pattern.matches("^[0-9]{12}$", viewModel.aadhaarNumber.value)
                             coroutineScope.launch {
                                 if (!aadhaarValid) {
                                     snackbarHostState.showSnackbar("Please enter correct Aadhaar number")
                                 } else {
-                                    val publicKey = PUBLIC_KEY_FROM_SERVER
-                                    val encryptedAadhaar = encryptAadhaar(viewModel.aadhaarNumber.value.trim(), publicKey)
-                                    viewModel.authenticateAadhaar(
-                                        encryptedAadhaar,
-                                        onOtpSent = { showOtpCard = true }
-                                    )
+                                    val encrypted = encryptAadhaar(viewModel.aadhaarNumber.value.trim(), PUBLIC_KEY_FROM_SERVER)
+                                    viewModel.authenticateAadhaar(encrypted) { }
                                 }
                             }
                         }
                     )
+
+
                 }
 
                 // Submit Button
@@ -308,13 +325,31 @@ fun RegistrationScreen(
                     onOtpValueChange = { otpValue = it },
                     onSubmitOtp = { enteredOtp ->
                         viewModel.verifyOtp(enteredOtp) {
+                            viewModel.showOtpPopup.value = false
                             showOtpCard = false
                             otpValue = ""
+                            viewModel.showSuccessDialog.value = true
+
                         }
                     },
-                    onDismissRequest = { showOtpCard = false }
+                    onDismissRequest = {
+                        viewModel.showOtpPopup.value = false
+                        showOtpCard = false
+                    }
+                )
+            }
+
+
+            if (showSuccessDialog) {
+                SuccessDialog(
+                    onNextClick = {
+                        viewModel.showSuccessDialog.value = false
+                        viewModel.setAadhaarAuthenticated(false)
+                        viewModel.fetchUserDetails(viewModel.userToken.value)
+                    }
                 )
             }
         }
     }
+
 }

@@ -1,5 +1,5 @@
 package com.example.elocker.viewmodel
-
+import kotlinx.coroutines.delay
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -18,6 +18,7 @@ import javax.inject.Inject
 class RegistrationViewModel @Inject constructor(
     private val repository: UserRepository
 ) : ViewModel() {
+    val userToken = mutableStateOf("")
 
     val name = mutableStateOf("")
     val fatherName = mutableStateOf("")
@@ -30,6 +31,8 @@ class RegistrationViewModel @Inject constructor(
     val isLoading = mutableStateOf(false)
     val message = mutableStateOf<String?>(null)
     val isAadhaarAuthenticated = MutableStateFlow(false)
+    val showOtpPopup = mutableStateOf(false)
+    val showSuccessDialog = mutableStateOf(false)
 
     var lastTxn = ""
     var lastEncryptedAadhaar = ""
@@ -47,6 +50,9 @@ class RegistrationViewModel @Inject constructor(
     fun onGenderExpandToggle() { genderExpanded.value = !genderExpanded.value }
     fun onAadhaarChange(newAadhaar: String) { aadhaarNumber.value = newAadhaar }
     fun clearMessage() { message.value = null }
+    fun setAadhaarAuthenticated(value: Boolean) {
+        isAadhaarAuthenticated.value = value
+    }
 
     // ----------------- Submit Form -----------------
 
@@ -97,35 +103,64 @@ class RegistrationViewModel @Inject constructor(
 
     fun authenticateAadhaar(encryptedAadhaar: String, onOtpSent: () -> Unit) {
         viewModelScope.launch {
+            if (otpCooldown.value > 0) {
+                message.value = "⏳ Please wait ${otpCooldown.value} sec before retrying."
+                return@launch
+            }
+
+            isLoading.value = true
             try {
-                isLoading.value = true
                 lastEncryptedAadhaar = encryptedAadhaar
-                val encrypted = encryptAadhaar(aadhaarNumber.value, PUBLIC_KEY_FROM_SERVER)
-                lastEncryptedAadhaar = encrypted
 
-                val response = repository.authenticateAadhaar(encrypted)
-                Log.d("AadhaarResponse", response.code().toString())
-                Log.d("AadhaarResponse", response.errorBody()?.string() ?: "No error body")
+                val otpResponse = repository.sendOtp(encryptedAadhaar)
+                if (otpResponse.isSuccessful) {
+                    val body = otpResponse.body()
+                    Log.d("OTP_FULL_RESPONSE", "SendOtpResponse: $body")
+                    showOtpPopup.value = true
 
-                if (response.isSuccessful) {
-                    val otpResponse = repository.sendOtp(encrypted)
-                    if (otpResponse.isSuccessful) {
-                        lastTxn = otpResponse.headers()["txn"] ?: ""
-                        message.value = "OTP sent successfully"
-                        onOtpSent()
+                    if (body?.response == "1" && body.response_code == "200") {
+                        lastTxn = body.sys_message.trim()
+                        if (lastTxn.isNotBlank()) {
+                            message.value = "✅ OTP sent"
+                            startOtpCooldown()
+                            onOtpSent()
+                        } else {
+                            message.value = "❌ Empty txn received"
+                        }
+                    } else if (body?.sys_message?.contains("flooding", true) == true) {
+                        message.value = "❌ OTP flooding detected. Please wait."
                     } else {
-                        message.value = "Failed to send OTP"
+                        message.value = "❌ ${body?.sys_message ?: "OTP send failed"}"
                     }
                 } else {
-                    message.value = "Aadhaar mismatch"
+                    message.value = "❌ Failed to send OTP"
                 }
             } catch (e: Exception) {
-                message.value = "Auth error: ${e.message}"
+                message.value = "❌ Error: ${e.message}"
             } finally {
                 isLoading.value = false
             }
         }
     }
+
+    val otpCooldown = mutableStateOf(0)
+
+    fun startOtpCooldown() {
+        viewModelScope.launch {
+            otpCooldown.value = 60
+            while (otpCooldown.value > 0) {
+                delay(1000)
+                otpCooldown.value -= 1
+            }
+        }
+    }
+
+
+
+
+
+
+
 
     // ----------------- Verify OTP -----------------
 
@@ -135,45 +170,55 @@ class RegistrationViewModel @Inject constructor(
             try {
                 val request = OtpVerificationRequest(
                     otp = otp,
-                    aadhaar = lastEncryptedAadhaar,
-                    txn = lastTxn
+                    aadhaar = lastEncryptedAadhaar.trim(),
+                    txn = lastTxn.trim()
                 )
-                val response = repository.verifyOtp(
-                    aadhaar = lastEncryptedAadhaar,
-                    otp = otp,
-                    txn = lastTxn
-                )
+
+                val response = repository.verifyOtp(request)
+
                 if (response.isSuccessful) {
-                    message.value = "OTP verified ✅"
-                    isAadhaarAuthenticated.value = true
-                    onSuccess()
+                    val body = response.body()
+                    Log.d("OTP_VERIFY", "Parsed Response: $body")
+                    val errorBody = response.errorBody()?.string()
+                    Log.d("OTP_RAW_ERROR", "Error Body: $errorBody")
+
+
+                    if (body?.response == "1" && body.response_code == "200") {
+
+                        val token = body?.data?.tkn
+                        if (!token.isNullOrEmpty()) {
+                            userToken.value = token
+                            isAadhaarAuthenticated.value = true
+                            message.value = "✅ OTP Verified"
+                            showSuccessDialog.value = true
+                            showOtpPopup.value = false
+//                            onSuccess()
+                        } else {
+                            message.value = "❌ Verification token missing"
+                        }
+
+                    } else {
+                        message.value = "❌ ${body?.sys_message ?: "Verification failed"}"
+                    }
                 } else {
-                    message.value = "Invalid OTP ❌"
+                    val error = response.errorBody()?.string()
+                    Log.e("OTP_VERIFY", "Error Body: $error")
+                    message.value = "❌ OTP verification failed"
                 }
             } catch (e: Exception) {
-                message.value = "Error: ${e.message}"
+                message.value = "❌ Error: ${e.message}"
             } finally {
                 isLoading.value = false
             }
         }
     }
 
-    // ----------------- Resend OTP -----------------
+//------------onNext Click----------------
 
-    fun resendOtp() {
-        viewModelScope.launch {
-            isLoading.value = true
-            try {
-                val response = repository.sendOtp(lastEncryptedAadhaar)
-                message.value = if (response.isSuccessful) "OTP resent ✅" else "Failed to resend OTP"
-            } catch (e: Exception) {
-                message.value = "Resend error: ${e.message}"
-            } finally {
-                isLoading.value = false
-            }
-        }
+    fun onNextClicked() {
+        // 🚀 Handle logic after success dialog (navigate or scroll form etc.)
+        showSuccessDialog.value = false
     }
-
     // ----------------- Utility -----------------
 
     private fun clearForm() {
@@ -188,4 +233,39 @@ class RegistrationViewModel @Inject constructor(
     fun showValidationError() {
         message.value = "Please fix the errors in the form."
     }
+
+
+    //--------------------------------Fetch User details----------------------------
+    fun fetchUserDetails(token: String) {
+        viewModelScope.launch {
+            try {
+                isLoading.value = true
+                val response = repository.getUserDetails(token)
+                if (response.isSuccessful) {
+                    val user = response.body()
+                    if (user != null) {
+                        val jsonLog = """
+                        {
+                          "username": "${user.username}",
+                          "fathername": "${user.fathername}",
+                          "mothername": "${user.mothername}",
+                          "gender": "${user.gender}",
+                          "aadhar_verification_id": "${user.aadhar_verification_id}",
+                          "dob": "${user.dob}"
+                        }
+                    """.trimIndent()
+                        Log.d("UserDetailsJSON", jsonLog)
+                        message.value = "User details fetched ✅"
+                    }
+                } else {
+                    message.value = "Failed to fetch user details ❌"
+                }
+            } catch (e: Exception) {
+                message.value = "Error fetching details: ${e.message}"
+            } finally {
+                isLoading.value = false
+            }
+        }
+    }
+
 }

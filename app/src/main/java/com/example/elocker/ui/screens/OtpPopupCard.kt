@@ -1,8 +1,6 @@
 package com.example.elocker.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -11,19 +9,18 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.material3.LocalTextStyle  
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.elocker.R
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,32 +50,33 @@ fun OtpPopupCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(horizontal = 24.dp, vertical = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Surface(
                     shape = CircleShape,
                     color = Color(0xFF4CAF50),
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(60.dp)
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_check),
                         contentDescription = "Success",
                         tint = Color.White,
-                        modifier = Modifier.padding(12.dp)
+                        modifier = Modifier.padding(16.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
                     text = "OTP sent to your registered mobile number\nmapped with XXXX-XXXX-XXXX",
                     textAlign = TextAlign.Center,
                     fontSize = 14.sp,
                     color = Color.Black,
-                    lineHeight = 18.sp,
-//                    modifier = Modifier.padding(bottom = 16.dp)
+                    lineHeight = 18.sp
                 )
+
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -107,38 +105,50 @@ fun OtpPopupCard(
                                 .focusRequester(focusRequesters[index]),
                             textStyle = LocalTextStyle.current.copy(
                                 textAlign = TextAlign.Center,
-                                fontSize = 20.sp,
-                                color = Color.Black
+                                fontSize = 22.sp,
+                                color = Color.Black,
+                                lineHeight = 28.sp
                             ),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             colors = TextFieldDefaults.outlinedTextFieldColors(
                                 focusedBorderColor = Color(0xFF0057FF),
-                                unfocusedBorderColor = Color(0xFF0057FF)
-                            )
+                                unfocusedBorderColor = Color(0xFF0057FF),
+                                containerColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(8.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
                 Button(
                     onClick = { onSubmitOtp(otpValue) },
-                    enabled = otpValue.length == 6 && !otpValue.contains(' '),
+                    enabled = otpValue.length == 6 && otpValue.all { it.isDigit() },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF0057FF),           // Always blue
-                        disabledContainerColor = Color(0xFF0057FF),    // Also blue when disabled
-                        contentColor = Color.White,                    // White text
-                        disabledContentColor = Color.White             // White text even when disabled
+                        containerColor = Color(0xFF0057FF),
+                        contentColor = Color.White
                     ),
                     shape = RoundedCornerShape(50),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp)
                 ) {
-                    Text("Submit", fontSize = 16.sp)
+                    Text(text = "Submit", fontSize = 16.sp)
                 }
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewOtpPopupCard() {
+    OtpPopupCard(
+        otpValue = "",
+        onOtpValueChange = {},
+        onSubmitOtp = {},
+        onDismissRequest = {}
+    )
 }
