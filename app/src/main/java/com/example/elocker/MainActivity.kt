@@ -11,7 +11,7 @@ import com.example.elocker.ui.theme.ELockerTheme
 import com.example.elocker.viewmodel.RegistrationViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.android.AndroidEntryPoint
-
+import com.example.elocker.ui.screens.DocumentsScreen
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,10 +27,16 @@ class MainActivity : ComponentActivity() {
                         RegistrationScreen(
                             navController = navController,
                             viewModel = viewModel,
-                            onSubmitClick = {
-                                // After final Submit click if needed, you can navigate somewhere
-                                // Example: navController.navigate("success_screen")
-                            }
+//                            onSubmitClick = {
+//                                navController.navigate("documents_screen")
+//                            }
+                        )
+                    }
+                    composable("documents_screen") {
+                        val viewModel: RegistrationViewModel = hiltViewModel()
+                        DocumentsScreen(
+                            navController = navController,
+                            viewModel = viewModel
                         )
                     }
                 }

@@ -1,4 +1,5 @@
 package com.example.elocker.viewmodel
+import android.media.session.MediaSession.Token
 import kotlinx.coroutines.delay
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
@@ -13,13 +14,21 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.compose.runtime.mutableStateListOf
+import com.example.elocker.data.remote.UserInfoRequest
+import com.example.elocker.data.remote.LicenceDocument
+import com.example.elocker.data.remote.UserDocumentResponse
+import androidx.navigation.NavController
+import java.text.SimpleDateFormat
+import java.util.*
+
 
 @HiltViewModel
 class RegistrationViewModel @Inject constructor(
     private val repository: UserRepository
 ) : ViewModel() {
     val userToken = mutableStateOf("")
-
+    val aadhaarUid = mutableStateOf("")
     val name = mutableStateOf("")
     val fatherName = mutableStateOf("")
     val motherName = mutableStateOf("")
@@ -33,9 +42,21 @@ class RegistrationViewModel @Inject constructor(
     val isAadhaarAuthenticated = MutableStateFlow(false)
     val showOtpPopup = mutableStateOf(false)
     val showSuccessDialog = mutableStateOf(false)
-
     var lastTxn = ""
     var lastEncryptedAadhaar = ""
+    val vaultKey = mutableStateOf("")
+
+
+
+
+
+
+    //------------------Document--------------------
+    val issuedDocs = mutableStateListOf<LicenceDocument>()
+    val expiredDocs = mutableStateListOf<LicenceDocument>()
+
+
+
 
     // ----------------- Input Change Functions -----------------
 
@@ -56,48 +77,60 @@ class RegistrationViewModel @Inject constructor(
 
     // ----------------- Submit Form -----------------
 
-    fun submitForm(onSuccess: () -> Unit = {}) {
-        viewModelScope.launch {
-            isLoading.value = true
-            try {
-                val data = FormData(
-                    name = name.value,
-                    fatherName = fatherName.value,
-                    motherName = motherName.value,
-                    dateOfBirth = dateOfBirth.value,
-                    gender = gender.value,
-                    aadhaarNumber = aadhaarNumber.value
-                )
+//    fun submitForm(navController: NavController,
+//                   onSuccess: () -> Unit = {}) {
+//        viewModelScope.launch {
+//            isLoading.value = true
+//            try {
+//                val data = FormData(
+//                    name = name.value,
+//                    fatherName = fatherName.value,
+//                    motherName = motherName.value,
+//                    dateOfBirth = dateOfBirth.value,
+//                    gender = gender.value,
+//                    aadhaarNumber = aadhaarNumber.value
+//                )
+//
+//                Log.d("SUBMIT_DATA", "name=${name.value}, father=${fatherName.value}, mother=${motherName.value}, dob=${dateOfBirth.value}, gender=${gender.value}, aadhaar=${aadhaarNumber.value}")
+//
+//                val encryptedAadhaar = encryptAadhaar(data.aadhaarNumber, PUBLIC_KEY_FROM_SERVER)
+//                Log.d("FormSubmission", "Encrypted Aadhaar: $encryptedAadhaar")
+//
+//                val response = repository.submitForm(data)
+//
+//                message.value = "Submission failed: ${response.code()} ${response.message()}"
+//                Log.e("SUBMIT_FAIL", "Error Body: ${response.errorBody()?.string()}")
+//
+//                if (response.isSuccessful) {
+//                    message.value = "Submitted successfully"
+//                    clearForm()
+//
+//                    // 🔁 Now fetch documents
+//                    val request = UserInfoRequest(
+//                        username = data.name,
+//                        fathername = data.fatherName,
+//                        mothername = data.motherName,
+//                        gender = data.gender,
+//                        aadhar_verification_id = userToken.value, // OR aadharVaultKey.value
+//                        dob = data.dateOfBirth
+//                    )
+//                    fetchUserDetails(request)
+//
+//                    navController.navigate("documents_screen")
+//                } else {
+//                    val error = response.errorBody()?.string()
+//                    Log.e("SUBMIT_FAIL", "Code: ${response.code()}, Error Body: $error")
+//                    message.value = "Submission failed: $error"
+//
+//                }
+//            } catch (e: Exception) {
+//                message.value = "Error: ${e.message}"
+//            } finally {
+//                isLoading.value = false
+//            }
+//        }
+//    }
 
-                // ✅ Print Form Data to Console (without plain Aadhaar)
-                Log.d("FormSubmission", "---- Form Data ----")
-                Log.d("FormSubmission", "Full Name: ${data.name}")
-                Log.d("FormSubmission", "Father Name: ${data.fatherName}")
-                Log.d("FormSubmission", "Mother Name: ${data.motherName}")
-                Log.d("FormSubmission", "Date of Birth: ${data.dateOfBirth}")
-                Log.d("FormSubmission", "Gender: ${data.gender}")
-
-                val encryptedAadhaar = encryptAadhaar(data.aadhaarNumber, PUBLIC_KEY_FROM_SERVER)
-                Log.d("FormSubmission", "Encrypted Aadhaar: $encryptedAadhaar")
-
-                val response = repository.submitForm(data)
-
-                if (response.isSuccessful) {
-                    val responseBody = "Submitted successfully"
-                    apiResponse.value = responseBody
-                    message.value = responseBody
-                    clearForm()
-                    onSuccess()
-                } else {
-                    message.value = "Submission failed: ${response.code()}"
-                }
-            } catch (e: Exception) {
-                message.value = "Error: ${e.message}"
-            } finally {
-                isLoading.value = false
-            }
-        }
-    }
 
     // ----------------- Authenticate Aadhaar -----------------
 
@@ -116,10 +149,13 @@ class RegistrationViewModel @Inject constructor(
                 if (otpResponse.isSuccessful) {
                     val body = otpResponse.body()
                     Log.d("OTP_FULL_RESPONSE", "SendOtpResponse: $body")
+
                     showOtpPopup.value = true
 
                     if (body?.response == "1" && body.response_code == "200") {
                         lastTxn = body.sys_message.trim()
+//
+
                         if (lastTxn.isNotBlank()) {
                             message.value = "✅ OTP sent"
                             startOtpCooldown()
@@ -174,35 +210,43 @@ class RegistrationViewModel @Inject constructor(
                     txn = lastTxn.trim()
                 )
 
+
                 val response = repository.verifyOtp(request)
 
                 if (response.isSuccessful) {
                     val body = response.body()
                     Log.d("OTP_VERIFY", "Parsed Response: $body")
-                    val errorBody = response.errorBody()?.string()
-                    Log.d("OTP_RAW_ERROR", "Error Body: $errorBody")
 
+                    val token = body?.data?.tkn
+                    val uid = body?.data?.uid
+                    val vault = body?.data?.aadharVaultKey
+                    vaultKey.value = body?.data?.aadharVaultKey ?: ""
 
-                    if (body?.response == "1" && body.response_code == "200") {
+                    Log.d("OTP_TOKEN", "Token: $token, UID: $uid, VaultKey: $vault")
 
-                        val token = body?.data?.tkn
-                        if (!token.isNullOrEmpty()) {
-                            userToken.value = token
-                            isAadhaarAuthenticated.value = true
-                            message.value = "✅ OTP Verified"
-                            showSuccessDialog.value = true
-                            showOtpPopup.value = false
-//                            onSuccess()
-                        } else {
-                            message.value = "❌ Verification token missing"
+                    if (!token.isNullOrEmpty()) {
+                        // Save Aadhaar user info
+                        body.data?.poi?.let { poi ->
+                            name.value = poi.name.orEmpty()
+                            gender.value = poi.gender.orEmpty()
+                            dateOfBirth.value = poi.dob.orEmpty()
                         }
 
+                        // Save identifiers
+                        userToken.value = token
+                        vaultKey.value = vault ?: ""
+                        aadhaarUid.value = uid ?: ""
+
+                        isAadhaarAuthenticated.value = true
+                        message.value = "✅ OTP Verified"
+                        showSuccessDialog.value = true
+                        showOtpPopup.value = false
                     } else {
-                        message.value = "❌ ${body?.sys_message ?: "Verification failed"}"
+                        message.value = "❌ Verification token missing"
                     }
+
                 } else {
-                    val error = response.errorBody()?.string()
-                    Log.e("OTP_VERIFY", "Error Body: $error")
+                    Log.e("OTP_VERIFY", "Failed: ${response.errorBody()?.string()}")
                     message.value = "❌ OTP verification failed"
                 }
             } catch (e: Exception) {
@@ -213,12 +257,46 @@ class RegistrationViewModel @Inject constructor(
         }
     }
 
+
 //------------onNext Click----------------
 
-    fun onNextClicked() {
-        // 🚀 Handle logic after success dialog (navigate or scroll form etc.)
+    fun onNextClicked(request: UserInfoRequest) {
         showSuccessDialog.value = false
+
+        viewModelScope.launch {
+            try {
+                isLoading.value = true
+                val response = repository.getUserDetails(userToken.value, request)
+
+
+                if (response.isSuccessful) {
+                    val userDocs = response.body()
+                    if (userDocs?.data?.isNotEmpty() == true) {
+                        val licenceData = userDocs.data[0].attributes.data.user.licenceDetails.data
+
+                        val issued = licenceData.filter { !it.valid_upto.isNullOrBlank() }
+                        val expired = licenceData.filter { it.valid_upto.isNullOrBlank() }
+
+                        issuedDocs.clear()
+                        expiredDocs.clear()
+                        issuedDocs.addAll(issued)
+                        expiredDocs.addAll(expired)
+
+                        message.value = "Documents fetched ✅"
+                    } else {
+                        message.value = "❌ No document data found"
+                    }
+                } else {
+                    message.value = "❌ Failed to fetch documents"
+                }
+            } catch (e: Exception) {
+                message.value = "❌ Error fetching documents: ${e.message}"
+            } finally {
+                isLoading.value = false
+            }
+        }
     }
+
     // ----------------- Utility -----------------
 
     private fun clearForm() {
@@ -230,42 +308,65 @@ class RegistrationViewModel @Inject constructor(
         aadhaarNumber.value = ""
     }
 
-    fun showValidationError() {
-        message.value = "Please fix the errors in the form."
-    }
+
 
 
     //--------------------------------Fetch User details----------------------------
-    fun fetchUserDetails(token: String) {
+    fun fetchDocumentsAfterForm(navController: NavController) {
         viewModelScope.launch {
+            isLoading.value = true
             try {
-                isLoading.value = true
-                val response = repository.getUserDetails(token)
+                val inputFormat = SimpleDateFormat("dd-MM-yyyy", Locale.US)
+                val outputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                val parsedDate = inputFormat.parse(dateOfBirth.value)
+                val formattedDob = outputFormat.format(parsedDate ?: Date())
+
+                val request = UserInfoRequest(
+                    username = name.value,
+                    fathername = fatherName.value,
+                    mothername = motherName.value,
+                    gender = gender.value,
+                    aadhar_verification_id = vaultKey.value,
+                    dob = formattedDob
+                )
+
+                val jsonLog = """
+                {
+                    "username": "${request.username}",
+                    "fathername": "${request.fathername}",
+                    "mothername": "${request.mothername}",
+                    "gender": "${request.gender}",
+                    "aadhar_verification_id": "${request.aadhar_verification_id}",
+                    "dob": "${request.dob}"
+                }
+                """.trimIndent()
+                Log.d("DOC_FETCH_REQUEST", jsonLog)
+                Log.d("AUTH_TOKEN", "Bearer ${userToken.value}")
+                val response = repository.getUserDetails(userToken.value, request)
+
+
                 if (response.isSuccessful) {
-                    val user = response.body()
-                    if (user != null) {
-                        val jsonLog = """
-                        {
-                          "username": "${user.username}",
-                          "fathername": "${user.fathername}",
-                          "mothername": "${user.mothername}",
-                          "gender": "${user.gender}",
-                          "aadhar_verification_id": "${user.aadhar_verification_id}",
-                          "dob": "${user.dob}"
-                        }
-                    """.trimIndent()
-                        Log.d("UserDetailsJSON", jsonLog)
-                        message.value = "User details fetched ✅"
+                    val userDocs = response.body()
+                    if (userDocs?.data?.isNotEmpty() == true) {
+                        val licenceData = userDocs.data[0].attributes.data.user.licenceDetails.data
+                        issuedDocs.clear()
+                        expiredDocs.clear()
+                        issuedDocs.addAll(licenceData.filter { !it.valid_upto.isNullOrBlank() })
+                        expiredDocs.addAll(licenceData.filter { it.valid_upto.isNullOrBlank() })
+                        message.value = "Documents fetched ✅"
+                        navController.navigate("documents_screen")
                     }
                 } else {
-                    message.value = "Failed to fetch user details ❌"
+                    Log.e("DOC_FETCH", "Failed: ${response.errorBody()?.string()}")
+                    message.value = "Failed to fetch documents ❌"
                 }
             } catch (e: Exception) {
-                message.value = "Error fetching details: ${e.message}"
+                message.value = "Error: ${e.message}"
             } finally {
                 isLoading.value = false
             }
         }
     }
+
 
 }

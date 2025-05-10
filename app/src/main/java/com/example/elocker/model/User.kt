@@ -9,11 +9,10 @@ data class User(
     val gender: String,
     val aadhaarNumber: String
 )
-data class UserDetails(
-    val username: String,
-    val fathername: String,
-    val mothername: String,
-    val gender: String,
-    val aadhar_verification_id: String,
-    val dob: String
+data class LicenceDocument(
+    val applicationID: String,
+    val outputPath: String,
+    val issuedOn: String,
+    val validUpto: String?,
+    val serviceName: String
 )

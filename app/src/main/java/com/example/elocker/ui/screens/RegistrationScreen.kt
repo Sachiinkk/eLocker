@@ -1,5 +1,5 @@
 package com.example.elocker.ui.screens
-
+import com.example.elocker.data.remote.UserInfoRequest
 import android.app.DatePickerDialog
 import android.widget.DatePicker
 import androidx.compose.foundation.*
@@ -11,6 +11,7 @@ import androidx.compose.material.icons.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
+import android.util.Log
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
@@ -41,7 +42,7 @@ import com.example.elocker.ui.screens.SuccessDialog
 fun RegistrationScreen(
     navController: NavController,
     viewModel: RegistrationViewModel = hiltViewModel(),
-    onSubmitClick: () -> Unit
+//    onSubmitClick: () -> Unit
 ) {
 
     val context = LocalContext.current
@@ -296,9 +297,11 @@ fun RegistrationScreen(
                 // Submit Button
                 Button(
                     onClick = {
-                        viewModel.submitForm {
-                            onSubmitClick()
-                        }
+                        viewModel.fetchDocumentsAfterForm(navController)
+                        Log.d("NAVIGATION", "Navigating to documents_screen")
+                        navController.navigate("documents_screen")
+
+
                     },
                     enabled = buttonEnabled,
                     modifier = Modifier
@@ -340,15 +343,17 @@ fun RegistrationScreen(
             }
 
 
-            if (showSuccessDialog) {
+            if (viewModel.showSuccessDialog.value) {
                 SuccessDialog(
                     onNextClick = {
                         viewModel.showSuccessDialog.value = false
-                        viewModel.setAadhaarAuthenticated(false)
-                        viewModel.fetchUserDetails(viewModel.userToken.value)
+//                        viewModel.onAadhaarChange(viewModel.userToken.value) // auto-fill Aadhaar
+//                        navController.navigate("registration") // or home screen if needed
                     }
                 )
             }
+
+
         }
     }
 
