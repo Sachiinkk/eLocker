@@ -21,17 +21,32 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.elocker.R
-
+import kotlinx.coroutines.delay
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OtpPopupCard(
     otpValue: String,
     onOtpValueChange: (String) -> Unit,
     onSubmitOtp: (String) -> Unit,
-    onDismissRequest: () -> Unit
+    onDismissRequest: () -> Unit,
+    onResendOtp: () -> Unit
 ) {
     val focusRequesters = remember { List(6) { FocusRequester() } }
     val focusManager = LocalFocusManager.current
+
+    // Timer state
+    val totalTime = 5 * 60
+    var timeLeft by remember { mutableStateOf(totalTime) }
+    var timerRunning by remember { mutableStateOf(true) }
+    LaunchedEffect(timerRunning) {
+        if (timerRunning) {
+            while (timeLeft > 0) {
+                delay(1000)
+                timeLeft--
+            }
+            timerRunning = false
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -77,6 +92,25 @@ fun OtpPopupCard(
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
+                if (timeLeft > 0) {
+                    val minutes = timeLeft / 60
+                    val seconds = timeLeft % 60
+                    Text(
+                        text = String.format("Time Left : %02d:%02d", minutes, seconds),
+                        color = Color.Red,
+                        fontSize = 14.sp,
+                        modifier = Modifier.align(Alignment.End)
+                    )
+                } else {
+                    TextButton(onClick = {
+                        onResendOtp()
+                        timeLeft = totalTime
+                        timerRunning = true
+                    }) {
+                        Text("Resend OTP", color = Color(0xFF0057FF))
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -100,14 +134,15 @@ fun OtpPopupCard(
                                 }
                             },
                             modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
+                                .weight(0.7f)
+                                .width(48.dp)
+                                .height(56.dp)
                                 .focusRequester(focusRequesters[index]),
                             textStyle = LocalTextStyle.current.copy(
                                 textAlign = TextAlign.Center,
-                                fontSize = 22.sp,
+                                fontSize = 15.sp,
                                 color = Color.Black,
-                                lineHeight = 28.sp
+                                lineHeight = 22.sp
                             ),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -118,6 +153,7 @@ fun OtpPopupCard(
                             ),
                             shape = RoundedCornerShape(8.dp)
                         )
+
                     }
                 }
 
@@ -146,9 +182,10 @@ fun OtpPopupCard(
 @Composable
 fun PreviewOtpPopupCard() {
     OtpPopupCard(
-        otpValue = "",
+        otpValue = "341238",
         onOtpValueChange = {},
         onSubmitOtp = {},
-        onDismissRequest = {}
+        onDismissRequest = {},
+        onResendOtp = {}
     )
 }

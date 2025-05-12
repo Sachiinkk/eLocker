@@ -134,6 +134,7 @@ class RegistrationViewModel @Inject constructor(
 
     // ----------------- Authenticate Aadhaar -----------------
 
+
     fun authenticateAadhaar(encryptedAadhaar: String, onOtpSent: () -> Unit) {
         viewModelScope.launch {
             if (otpCooldown.value > 0) {
@@ -193,7 +194,42 @@ class RegistrationViewModel @Inject constructor(
 
 
 
+//-------------reSendOtp-------------------------
+fun resendOtp() {
+    viewModelScope.launch {
+        if (otpCooldown.value > 0) {
+            message.value = "⏳ Please wait ${otpCooldown.value} sec before retrying."
+            return@launch
+        }
 
+        isLoading.value = true
+        try {
+            val otpResponse = repository.sendOtp(lastEncryptedAadhaar)
+            if (otpResponse.isSuccessful) {
+                val body = otpResponse.body()
+                Log.d("RESEND_OTP_RESPONSE", "SendOtpResponse: $body")
+
+                if (body?.response == "1" && body.response_code == "200") {
+                    lastTxn = body.sys_message.trim()
+                    if (lastTxn.isNotBlank()) {
+                        message.value = "✅ OTP resent"
+                        startOtpCooldown()
+                    } else {
+                        message.value = "❌ Empty txn received on resend"
+                    }
+                } else {
+                    message.value = "❌ ${body?.sys_message ?: "OTP resend failed"}"
+                }
+            } else {
+                message.value = "❌ Failed to resend OTP"
+            }
+        } catch (e: Exception) {
+            message.value = "❌ Error: ${e.message}"
+        } finally {
+            isLoading.value = false
+        }
+    }
+}
 
 
 

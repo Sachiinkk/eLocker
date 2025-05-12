@@ -328,19 +328,22 @@ fun RegistrationScreen(
                     onOtpValueChange = { otpValue = it },
                     onSubmitOtp = { enteredOtp ->
                         viewModel.verifyOtp(enteredOtp) {
-                            viewModel.showOtpPopup.value = false
+                            // Dismiss only after successful verification
                             showOtpCard = false
                             otpValue = ""
+                            viewModel.showOtpPopup.value = false
                             viewModel.showSuccessDialog.value = true
-
                         }
                     },
+                    // Don't dismiss on outside touch or ESC press
                     onDismissRequest = {
-                        viewModel.showOtpPopup.value = false
-                        showOtpCard = false
+                    },
+                            onResendOtp = {
+                        viewModel.resendOtp()
                     }
                 )
             }
+
 
 
             if (viewModel.showSuccessDialog.value) {
