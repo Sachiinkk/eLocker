@@ -138,13 +138,13 @@ This module provides a secure OTP-based Aadhaar authentication system built usin
 
 #### 📤 Send OTP
 - **Base URL:** `BASE_URL`
-- **Endpoint:** `POST /sendOtp`
+- **Endpoint:** `POST /AadhaarSendOtp`
 - **Description:** Sends OTP to the Aadhaar-linked mobile number.
 - **Function Used:** `sendOtp()`
 
 #### ✅ Verify OTP
 - **Base URL:** `BASE_URL`
-- **Endpoint:** `POST /verifyOtp`
+- **Endpoint:** `POST /AadhaarOTPBasedEkyc`
 - **Description:** Verifies the entered OTP with the backend.
 - **Function Used:** `verifyOtp()`
 
@@ -154,6 +154,6 @@ This module provides a secure OTP-based Aadhaar authentication system built usin
 
 #### 📥 Get User Details
 - **Base URL:** `BASE_URL_2`
-- **Endpoint:** `POST /getUserDetails`
+- **Endpoint:** `POST /Fetch-elocker`
 - **Description:** Retrieves user documentation and related metadata.
 - **Function Used:** `getUserDetails()`
