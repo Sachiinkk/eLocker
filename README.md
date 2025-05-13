@@ -34,10 +34,18 @@ app/
 │       ├── repository/
 │       │   └── UserRepository.kt
 │       ├── ui/
-│       │   ├── components/
-│       │   └── screens/
-│       │       └── RegistrationScreen.kt
-│       ├── theme/
+│       │   ├── screens/
+│       │   |   ├── RegistrationScreen.kt
+|       |   |   ├── DocumentScreen.kt
+|       |   |   ├── OtpPopupCard.kt
+|       |   |   └── SuccessDialog.kt
+│       |   └── theme/
+|       |      ├── Color.kt
+|       |      ├── Theam.kt
+|       |      └── Type.kt
+|       ├── utils/
+|       |      ├── Constants.kt
+|       |      └──EncryptionUtils.kt
 │       ├── viewmodel/
 │       │   └── RegistrationViewModel.kt
 │       ├── App.kt
@@ -48,14 +56,17 @@ app/
 
 ---
 
-## 🛠️ Tech Stack
+## 📦 Tech Stack
 
-- Jetpack Compose
-- Kotlin
-- Retrofit2
-- Hilt (DI)
-- Material3
-- MVVM + Clean Architecture
+| Layer         | Tech Used               |
+|---------------|--------------------------|
+| UI            | Jetpack Compose          |
+| State         | ViewModel + State Flows  |
+| Networking    | Retrofit + Coroutines    |
+| Security      | Aadhaar Encryption (BouncyCastle) |
+| Architecture  | MVVM                     |
+
+---
 
 ---
 
@@ -71,10 +82,78 @@ Compose BOM 2024.04.01
 Material Icons
 ## 🚀 Setup
 
-1. Clone the repo
-2. Add this to `AndroidManifest.xml`:
 
-```xml
-<application
-    android:name=".App"
-    ...>
+# Aadhaar OTP Authentication - Jetpack Compose
+
+This module provides a secure OTP-based Aadhaar authentication system built using **Jetpack Compose**, **Kotlin**, and **MVVM architecture**.
+
+
+### 🔐 Aadhaar Encryption
+- Frontend encrypts Aadhaar using `BouncyCastle`.
+- Secure transmission to backend for OTP generation.
+
+### 📩 OTP Flow
+- Sends OTP via API using encrypted Aadhaar.
+- Displays `OtpPopupCard` with:
+  - 6-digit OTP entry.
+  - Smooth input focus handling.
+  - Countdown timer (5 min).
+  - **Auto-disable and Resend OTP** after expiry.
+
+### 🕒 Timer System
+- 5-minute countdown on OTP screen.
+- Timer disables resend until cooldown expires.
+- Proper UI feedback using Snackbar/messages.
+
+### 🔁 Resend OTP
+- Fully working resend logic using the last encrypted Aadhaar.
+- Handles edge cases like flooding and error responses.
+
+### ✅ OTP Verification
+- OTP is verified via backend with the stored `txn` ID.
+- On success, shows success dialog and proceeds to next flow.
+
+---
+
+## 🧠 UX Improvements
+- Prevented UI shake by:
+  - Avoiding recomposition on input.
+  - Adding fixed width to OTP input fields.
+  - Introducing delay in focus jump.
+- Snackbar-style messages for feedback.
+- Responsive layout.
+
+---
+
+
+
+## 🛠 Next Steps
+- Add biometric fallback for Aadhaar.
+- UI test automation for OTP flow.
+- Accessibility improvements.
+- Retry limit logic.
+
+---
+
+
+#### 📤 Send OTP
+- **Base URL:** `BASE_URL`
+- **Endpoint:** `POST /AadhaarSendOtp`
+- **Description:** Sends OTP to the Aadhaar-linked mobile number.
+- **Function Used:** `sendOtp()`
+
+#### ✅ Verify OTP
+- **Base URL:** `BASE_URL`
+- **Endpoint:** `POST /AadhaarOTPBasedEkyc`
+- **Description:** Verifies the entered OTP with the backend.
+- **Function Used:** `verifyOtp()`
+
+---
+
+### 📄 Fetching User Documentation
+
+#### 📥 Get User Details
+- **Base URL:** `BASE_URL_2`
+- **Endpoint:** `POST /Fetch-elocker`
+- **Description:** Retrieves user documentation and related metadata.
+- **Function Used:** `getUserDetails()`
