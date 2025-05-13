@@ -9,11 +9,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.elocker.R
 import kotlinx.coroutines.delay
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OtpPopupCard(
@@ -33,8 +35,8 @@ fun OtpPopupCard(
 ) {
     val focusRequesters = remember { List(6) { FocusRequester() } }
     val focusManager = LocalFocusManager.current
+    var currentFocusIndex by remember { mutableStateOf(0) }
 
-    // Timer state
     val totalTime = 5 * 60
     var timeLeft by remember { mutableStateOf(totalTime) }
     var timerRunning by remember { mutableStateOf(true) }
@@ -121,23 +123,40 @@ fun OtpPopupCard(
                         OutlinedTextField(
                             value = otpValue.getOrNull(index)?.toString() ?: "",
                             onValueChange = { value ->
-                                if (value.length <= 1 && value.all { it.isDigit() }) {
-                                    val newOtp = otpValue.padEnd(6, ' ').toCharArray()
-                                    newOtp[index] = value.getOrNull(0) ?: ' '
+                                val newOtp = otpValue.padEnd(6, ' ').toCharArray()
+                                if (value.isNotEmpty() && value[0].isDigit()) {
+                                    newOtp[index] = value[0]
                                     onOtpValueChange(newOtp.concatToString().trim())
-
-                                    if (value.isNotEmpty() && index < 5) {
-                                        focusRequesters[index + 1].requestFocus()
-                                    } else if (value.isEmpty() && index > 0) {
-                                        focusRequesters[index - 1].requestFocus()
+                                    if (index < 5) {
+                                        currentFocusIndex = index + 1
+                                        focusRequesters[currentFocusIndex].requestFocus()
                                     }
                                 }
                             },
                             modifier = Modifier
-                                .weight(0.7f)
                                 .width(48.dp)
                                 .height(56.dp)
-                                .focusRequester(focusRequesters[index]),
+                                .weight(0.7f)
+                                .focusRequester(focusRequesters[index])
+                                .onPreviewKeyEvent { event ->
+                                    if (event.key == Key.Backspace && event.type == KeyEventType.KeyDown) {
+                                        val newOtp = otpValue.padEnd(6, ' ').toCharArray()
+                                        if (index > 0) {
+                                            val updatedOtp = otpValue.padEnd(6, ' ').toCharArray()
+                                            updatedOtp[index] = ' '
+                                            updatedOtp[index - 1] = ' '
+                                            onOtpValueChange(updatedOtp.concatToString().trim())
+                                            currentFocusIndex = index - 1
+                                            focusRequesters[currentFocusIndex].requestFocus()
+                                        } else {
+                                            val updatedOtp = otpValue.padEnd(6, ' ').toCharArray()
+                                            updatedOtp[index] = ' '
+                                            onOtpValueChange(updatedOtp.concatToString().trim())
+                                        }
+
+                                        true
+                                    } else false
+                                },
                             textStyle = LocalTextStyle.current.copy(
                                 textAlign = TextAlign.Center,
                                 fontSize = 15.sp,
@@ -153,7 +172,6 @@ fun OtpPopupCard(
                             ),
                             shape = RoundedCornerShape(8.dp)
                         )
-
                     }
                 }
 
@@ -182,7 +200,7 @@ fun OtpPopupCard(
 @Composable
 fun PreviewOtpPopupCard() {
     OtpPopupCard(
-        otpValue = "341238",
+        otpValue = "34238",
         onOtpValueChange = {},
         onSubmitOtp = {},
         onDismissRequest = {},

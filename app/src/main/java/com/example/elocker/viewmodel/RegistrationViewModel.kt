@@ -391,6 +391,7 @@ fun resendOtp() {
                         expiredDocs.addAll(licenceData.filter { it.valid_upto.isNullOrBlank() })
                         message.value = "Documents fetched ✅"
                         navController.navigate("documents_screen")
+                        Log.e("DOC_FETCH", "Failed: ${response.errorBody()?.string()}")
                     }
                 } else {
                     Log.e("DOC_FETCH", "Failed: ${response.errorBody()?.string()}")

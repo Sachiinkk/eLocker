@@ -163,12 +163,10 @@ data class UserInfoRequest(
 interface ApiService {
 
 
-    // Step 1: Authenticate Aadhaar (encrypted on frontend)
-//    @POST("HealthaadhaarValidate/AadhaarSendOtp/")
-//    suspend fun authenticateAadhaar(@Body request: AadhaarRequest): Response<Void>
 
 
-    // Step 2: Trigger OTP if Aadhaar matches
+
+
     @POST("HealthaadhaarValidate/AadhaarSendOtp/")
     suspend fun sendOtp(@Body request: AadhaarRequest): Response<SendOtpResponse>
 
