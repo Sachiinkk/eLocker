@@ -1,13 +1,14 @@
 package com.example.elocker.data.remote
 
+import android.media.session.MediaSession.Token
 import retrofit2.http.Body
 import retrofit2.http.POST
 import retrofit2.http.Headers
-import  retrofit2.http.GET
+
 
 import retrofit2.Response
 import com.google.gson.annotations.SerializedName
-import com.google.gson.JsonObject
+
 import retrofit2.http.Header
 
 // Form data model for final submission
@@ -121,16 +122,18 @@ data class UserData(
 )
 
 data class UserInfo(
-    val dbResults: List<DbResult>?,
-    val licenceDetails: LicenceDetails
+    @SerializedName("dbResults") val dbResults: List<DbResult>?,
+    @SerializedName("licenceDetails") val licenceDetails: LicenceDetails
 )
 
 data class DbResult(
-    val Citizenid: String?,
-    val Name: String?,
-    val Application_IDs: String?,
-    val Document_IDs: String?,
-    val services_name: String?
+    @SerializedName("Citizenid") val Citizenid: String?,
+    @SerializedName("Name") val Name: String?,
+    @SerializedName("Application_IDs") val Application_IDs: String?,
+    @SerializedName("Document_IDs") val Document_IDs: String?,
+    @SerializedName("Total_licenses") val Total_licenses: Int?,
+    @SerializedName("services_name") val services_name: String?
+
 )
 
 data class LicenceDetails(
@@ -160,13 +163,24 @@ data class UserInfoRequest(
     val aadhar_verification_id: String,
     val dob: String
 )
+
+//---------------------get Base64 pdf -----------
+//----------------request---------------------
+data class ViewDocumentRequest(
+    val docSrNo: String
+)
+
+//-----------------response---------------
+data class ViewDocumentResponse(
+    val response: Int,
+    val sys_message: String?,
+    val data: List<ViewDocumentData>?
+)
+
+data class ViewDocumentData(
+    val base64Pdf: String
+)
 interface ApiService {
-
-
-
-
-
-
     @POST("HealthaadhaarValidate/AadhaarSendOtp/")
     suspend fun sendOtp(@Body request: AadhaarRequest): Response<SendOtpResponse>
 
@@ -177,9 +191,16 @@ interface ApiService {
 
 interface  ApiService2{
     @POST("common/v1/Fetch-elocker")
-//    @Headers("Content-Type: application/json")
+    @Headers("Content-Type: application/json")
     suspend fun getUserDocuments(
-        @Header("Authorization") authHeader: String,
-    @Body request: UserInfoRequest
-): Response<UserDocumentResponse>
+        @Header("Authorization") token: String,
+        @Body request: UserInfoRequest
+    ): Response<UserDocumentResponse>
+}
+
+interface  ApiService3{
+    @POST("Verification/GetDsnDetails")
+    suspend fun viewDocument(
+        @Body request: ViewDocumentRequest
+    ): Response<ViewDocumentResponse>
 }

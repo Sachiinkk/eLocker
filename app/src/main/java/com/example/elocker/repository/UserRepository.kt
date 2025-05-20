@@ -27,6 +27,7 @@ class UserRepository @Inject constructor() {
     suspend fun getUserDetails(token: String, request: UserInfoRequest): Response<UserDocumentResponse> {
         return RetrofitInstance.api2.getUserDocuments("Bearer $token", request)
     }
-
-
+    suspend fun viewDocument( request: ViewDocumentRequest): Response<ViewDocumentResponse> {
+        return RetrofitInstance.api3.viewDocument(request)
+    }
 }

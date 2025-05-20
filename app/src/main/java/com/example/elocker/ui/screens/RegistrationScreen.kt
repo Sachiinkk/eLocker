@@ -52,7 +52,7 @@ fun RegistrationScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val otpCooldown = viewModel.otpCooldown.value
     val showSuccessDialog = viewModel.showSuccessDialog.value
-
+    val calendar = Calendar.getInstance()
     val isLoading = viewModel.isLoading.value
     val message = viewModel.message.value
     val isAuthenticated by viewModel.isAadhaarAuthenticated.collectAsStateWithLifecycle()
@@ -181,20 +181,31 @@ fun RegistrationScreen(
                 )
 
                 // Date of Birth
-                val calendar = Calendar.getInstance()
                 var showPicker by remember { mutableStateOf(false) }
+
                 if (showPicker) {
                     DatePickerDialog(
                         context,
                         { _: DatePicker, year: Int, month: Int, day: Int ->
-                            val selectedDate = Calendar.getInstance().apply { set(year, month, day) }.time
-                            val today = Date()
+                            val selectedDate = Calendar.getInstance().apply {
+                                set(year, month, day)
+                            }.time
+
+                            val today = Calendar.getInstance().apply {
+                                set(Calendar.HOUR_OF_DAY, 0)
+                                set(Calendar.MINUTE, 0)
+                                set(Calendar.SECOND, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }.time
+
                             if (selectedDate.after(today)) {
-                                dobError = "DOB must be less than today"
+                                dobError = "DOB must be before today"
                             } else {
-                                viewModel.onDateOfBirthChange("$day/${month + 1}/$year")
+                                val dobFormatted = String.format("%02d/%02d/%04d", day, month + 1, year)
+                                viewModel.onDateOfBirthChange(dobFormatted)
                                 dobError = null
                             }
+
                             showPicker = false
                         },
                         calendar.get(Calendar.YEAR),
@@ -205,7 +216,7 @@ fun RegistrationScreen(
 
                 OutlinedTextField(
                     value = viewModel.dateOfBirth.value,
-                    onValueChange = {},
+                    onValueChange = {}, // disable manual typing
                     readOnly = true,
                     label = { Text("Date of Birth") },
                     placeholder = { Text("Select DOB (DD/MM/YYYY)") },
@@ -216,11 +227,14 @@ fun RegistrationScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showPicker = true },
+                        .clickable { showPicker = true }, // open on field click
                     isError = dobError != null,
-                    supportingText = { dobError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
+                    supportingText = {
+                        dobError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                     colors = inputColors
                 )
+
 
                 // Gender Dropdown
                 ExposedDropdownMenuBox(
@@ -298,10 +312,6 @@ fun RegistrationScreen(
                 Button(
                     onClick = {
                         viewModel.fetchDocumentsAfterForm(navController)
-                        Log.d("NAVIGATION", "Navigating to documents_screen")
-                        navController.navigate("documents_screen")
-
-
                     },
                     enabled = buttonEnabled,
                     modifier = Modifier
@@ -361,3 +371,6 @@ fun RegistrationScreen(
     }
 
 }
+
+
+

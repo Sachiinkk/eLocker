@@ -19,15 +19,16 @@ import com.example.elocker.data.remote.UserInfoRequest
 import com.example.elocker.data.remote.LicenceDocument
 import com.example.elocker.data.remote.UserDocumentResponse
 import androidx.navigation.NavController
+import com.google.gson.Gson
 import java.text.SimpleDateFormat
 import java.util.*
 
-
+import com.example.elocker.data.remote.ViewDocumentRequest
 @HiltViewModel
 class RegistrationViewModel @Inject constructor(
     private val repository: UserRepository
 ) : ViewModel() {
-    val userToken = mutableStateOf("")
+
     val aadhaarUid = mutableStateOf("")
     val name = mutableStateOf("")
     val fatherName = mutableStateOf("")
@@ -45,6 +46,7 @@ class RegistrationViewModel @Inject constructor(
     var lastTxn = ""
     var lastEncryptedAadhaar = ""
     val vaultKey = mutableStateOf("")
+    val base64Pdf = mutableStateOf<String?>(null)
 
 
 
@@ -54,6 +56,7 @@ class RegistrationViewModel @Inject constructor(
     //------------------Document--------------------
     val issuedDocs = mutableStateListOf<LicenceDocument>()
     val expiredDocs = mutableStateListOf<LicenceDocument>()
+
 
 
 
@@ -74,62 +77,6 @@ class RegistrationViewModel @Inject constructor(
     fun setAadhaarAuthenticated(value: Boolean) {
         isAadhaarAuthenticated.value = value
     }
-
-    // ----------------- Submit Form -----------------
-
-//    fun submitForm(navController: NavController,
-//                   onSuccess: () -> Unit = {}) {
-//        viewModelScope.launch {
-//            isLoading.value = true
-//            try {
-//                val data = FormData(
-//                    name = name.value,
-//                    fatherName = fatherName.value,
-//                    motherName = motherName.value,
-//                    dateOfBirth = dateOfBirth.value,
-//                    gender = gender.value,
-//                    aadhaarNumber = aadhaarNumber.value
-//                )
-//
-//                Log.d("SUBMIT_DATA", "name=${name.value}, father=${fatherName.value}, mother=${motherName.value}, dob=${dateOfBirth.value}, gender=${gender.value}, aadhaar=${aadhaarNumber.value}")
-//
-//                val encryptedAadhaar = encryptAadhaar(data.aadhaarNumber, PUBLIC_KEY_FROM_SERVER)
-//                Log.d("FormSubmission", "Encrypted Aadhaar: $encryptedAadhaar")
-//
-//                val response = repository.submitForm(data)
-//
-//                message.value = "Submission failed: ${response.code()} ${response.message()}"
-//                Log.e("SUBMIT_FAIL", "Error Body: ${response.errorBody()?.string()}")
-//
-//                if (response.isSuccessful) {
-//                    message.value = "Submitted successfully"
-//                    clearForm()
-//
-//                    // 🔁 Now fetch documents
-//                    val request = UserInfoRequest(
-//                        username = data.name,
-//                        fathername = data.fatherName,
-//                        mothername = data.motherName,
-//                        gender = data.gender,
-//                        aadhar_verification_id = userToken.value, // OR aadharVaultKey.value
-//                        dob = data.dateOfBirth
-//                    )
-//                    fetchUserDetails(request)
-//
-//                    navController.navigate("documents_screen")
-//                } else {
-//                    val error = response.errorBody()?.string()
-//                    Log.e("SUBMIT_FAIL", "Code: ${response.code()}, Error Body: $error")
-//                    message.value = "Submission failed: $error"
-//
-//                }
-//            } catch (e: Exception) {
-//                message.value = "Error: ${e.message}"
-//            } finally {
-//                isLoading.value = false
-//            }
-//        }
-//    }
 
 
     // ----------------- Authenticate Aadhaar -----------------
@@ -168,9 +115,12 @@ class RegistrationViewModel @Inject constructor(
                         message.value = "❌ OTP flooding detected. Please wait."
                     } else {
                         message.value = "❌ ${body?.sys_message ?: "OTP send failed"}"
+
                     }
                 } else {
                     message.value = "❌ Failed to send OTP"
+                    val    Error = message.value
+                    Log.d("Error_INOTP" , "$Error")
                 }
             } catch (e: Exception) {
                 message.value = "❌ Error: ${e.message}"
@@ -256,9 +206,12 @@ fun resendOtp() {
                     val token = body?.data?.tkn
                     val uid = body?.data?.uid
                     val vault = body?.data?.aadharVaultKey
+                    val userToken = mutableStateOf("")
+                    userToken.value = token ?: ""
                     vaultKey.value = body?.data?.aadharVaultKey ?: ""
 
                     Log.d("OTP_TOKEN", "Token: $token, UID: $uid, VaultKey: $vault")
+                    Log.d("TOKEN_CHECK", "Bearer Token: ${userToken.value}")
 
                     if (!token.isNullOrEmpty()) {
                         // Save Aadhaar user info
@@ -277,6 +230,8 @@ fun resendOtp() {
                         message.value = "✅ OTP Verified"
                         showSuccessDialog.value = true
                         showOtpPopup.value = false
+
+
                     } else {
                         message.value = "❌ Verification token missing"
                     }
@@ -302,6 +257,7 @@ fun resendOtp() {
         viewModelScope.launch {
             try {
                 isLoading.value = true
+                val userToken = mutableStateOf("")
                 val response = repository.getUserDetails(userToken.value, request)
 
 
@@ -347,16 +303,17 @@ fun resendOtp() {
 
 
 
-    //--------------------------------Fetch User details----------------------------
+   // --------------------------------Fetch User details----------------------------
     fun fetchDocumentsAfterForm(navController: NavController) {
         viewModelScope.launch {
             isLoading.value = true
             try {
+                //1 formate DOB "YYYY-MM-DD"
                 val inputFormat = SimpleDateFormat("dd-MM-yyyy", Locale.US)
                 val outputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
                 val parsedDate = inputFormat.parse(dateOfBirth.value)
                 val formattedDob = outputFormat.format(parsedDate ?: Date())
-
+                // 2 Prepare request
                 val request = UserInfoRequest(
                     username = name.value,
                     fathername = fatherName.value,
@@ -365,6 +322,8 @@ fun resendOtp() {
                     aadhar_verification_id = vaultKey.value,
                     dob = formattedDob
                 )
+                Log.d("DOC_FETCH_REQUEST", request.toString())
+
 
                 val jsonLog = """
                 {
@@ -377,28 +336,63 @@ fun resendOtp() {
                 }
                 """.trimIndent()
                 Log.d("DOC_FETCH_REQUEST", jsonLog)
-                Log.d("AUTH_TOKEN", "Bearer ${userToken.value}")
-                val response = repository.getUserDetails(userToken.value, request)
+// API Call
+                val userToken =
+                    """eyJhbGciOiJodHRwOi8vd3d3LnczLm9yZy8yMDAxLzA0L3htbGRzaWctbW9yZSNobWFjLXNoYTI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiI0MDQwNDcxIiwicHNwY2xfYWdlbnQiOiIyMTMxOCIsInVzZXJ0eXBlIjoiY2l0aXplbiIsIm5hbWUiOiJIYXJpbmRlciBDaGVlbWEiLCJ1c2VybmFtZSI6IjkzNjgzMDA3NjUiLCJleHAiOjE3NjExMjY2ODIsImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6NjM4ODQiLCJhdWQiOiJodHRwOi8vbG9jYWxob3N0OjYzODg0In0.ib25aczA5Mu2nYR7zKj3yhNpHqdb2Qzz6BYAQL72J-0"""
 
+                Log.d("AUTH_TOKEN", "Bearer ${userToken}")
+                val token = "${userToken}"
+                val response = repository.getUserDetails(token, request)
 
+                Log.d("DOC_FETCH", "HTTP Code: ${response.code()}")
+                Log.d("DOC_FETCH", "Is Successful: ${response.isSuccessful}")
+                Log.d("DOC_FETCH", "Headers: ${response.headers()}")
+                Log.d("DOC_FETCH", "Raw: ${response.raw()}")
+                Log.d("DOC_FETCH", "Message: ${response.message()}")
+                Log.d("DOC_FETCH", "Body: ${response.body()?.toString()}")
+                Log.d("DOC_FETCH", "Error Body: ${response.errorBody()?.string()}")
+                if (userToken.isBlank()) {
+                    message.value = "Auth token missing. Please authenticate again."
+                    isLoading.value = false
+                    return@launch
+                }
                 if (response.isSuccessful) {
-                    val userDocs = response.body()
-                    if (userDocs?.data?.isNotEmpty() == true) {
-                        val licenceData = userDocs.data[0].attributes.data.user.licenceDetails.data
-                        issuedDocs.clear()
-                        expiredDocs.clear()
-                        issuedDocs.addAll(licenceData.filter { !it.valid_upto.isNullOrBlank() })
-                        expiredDocs.addAll(licenceData.filter { it.valid_upto.isNullOrBlank() })
-                        message.value = "Documents fetched ✅"
-                        navController.navigate("documents_screen")
-                        Log.e("DOC_FETCH", "Failed: ${response.errorBody()?.string()}")
+                    val rawJson = Gson().toJson(response.body())
+                    Log.d("DOC_RAW_JSON", rawJson)
+
+                    val user = response.body()
+                        ?.data?.firstOrNull()
+                        ?.attributes
+                        ?.data
+                        ?.user
+
+                    Log.d("PARSE", "user: $user")
+                    Log.d("PARSE", "dbResults: ${user?.dbResults}")
+                    Log.d("PARSE", "licenceDetails: ${user?.licenceDetails?.data}")
+
+                    val licenceList = user?.licenceDetails?.data ?: emptyList()
+                    issuedDocs.clear()
+                    expiredDocs.clear()
+
+                    val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+
+                    licenceList.forEach { doc ->
+                        val isExpired = !doc.valid_upto.isNullOrEmpty() && doc.valid_upto < today
+
+                        if (isExpired) expiredDocs.add(doc) else issuedDocs.add(doc)
                     }
+
+                    Log.d("DOC_CHECK", "Issued=${issuedDocs.size}, Expired=${expiredDocs.size}")
+
+                    navController.navigate("documents_screen")
                 } else {
-                    Log.e("DOC_FETCH", "Failed: ${response.errorBody()?.string()}")
+                    val error = response.errorBody()?.string() ?: "Unknown error"
+                    Log.e("DOC_FETCH", "Failed: $error")
                     message.value = "Failed to fetch documents ❌"
                 }
             } catch (e: Exception) {
                 message.value = "Error: ${e.message}"
+                Log.e("DOC_FETCH", "Exception: ${e.stackTraceToString()}")
             } finally {
                 isLoading.value = false
             }
@@ -406,4 +400,51 @@ fun resendOtp() {
     }
 
 
+
+    fun fetchBase64Pdf(
+        request: ViewDocumentRequest,
+        navController: NavController
+    ) {
+        viewModelScope.launch {
+            try {
+                isLoading.value = true
+
+                val response = repository.viewDocument(request)
+
+                if (response.isSuccessful) {
+                    val base64Pdf = response.body()?.data?.firstOrNull()?.base64Pdf
+                    Log.d("PDF_API", "Base64 PDF: $base64Pdf")
+                    Log.d("PDF_API", "Full Response: ${response.body().toString()}")
+
+                    message.value = "PDF loaded"
+                    val pdfData = response.body()?.data
+                    if (pdfData.isNullOrEmpty()) {
+                        Log.e("PDF_API", "Empty or missing PDF data")
+                        return@launch
+                    }
+                    if (base64Pdf.isNullOrEmpty()) {
+                        Log.e("PDF_API", "base64Pdf is missing in response data")
+                    }
+
+                    // ✅ Navigate
+                    navController.currentBackStackEntry?.savedStateHandle?.set(
+                        "pdf_base64",
+                        base64Pdf
+                    )
+                    navController.navigate("pdf_view_screen")
+                } else {
+                    val error = response.errorBody()?.string() ?: "Unknown error"
+                    Log.e("PDF_API", "Failed: $error")
+                    message.value = "Failed to load PDF"
+                }
+            } catch (e: Exception) {
+                Log.e("PDF_API", "Exception: ${e.message}")
+                message.value = "Error: ${e.message}"
+            } finally {
+                isLoading.value = false
+            }
+        }
+    }
 }
+
+
