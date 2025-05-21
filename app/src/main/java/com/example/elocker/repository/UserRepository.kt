@@ -6,10 +6,6 @@ import okhttp3.ResponseBody
 import javax.inject.Inject
 class UserRepository @Inject constructor() {
 
-    // Submit registration form
-//    suspend fun submitForm(data: FormData): Response<Void> {
-//        return RetrofitInstance.api2.submitForm(data)
-//    }
 
 
 

@@ -31,9 +31,10 @@ import com.example.elocker.viewmodel.RegistrationViewModel
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.tooling.preview.Preview
 import java.util.*
 import java.util.regex.Pattern
-import com.example.elocker.ui.screens.SuccessDialog
+
 
 
 
@@ -100,7 +101,14 @@ fun RegistrationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Punjab e-Locker") },
+                title = {
+                    Text(
+                        text = "Punjab e-Locker",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { /* your back logic */ }) {
                         Icon(
@@ -108,7 +116,10 @@ fun RegistrationScreen(
                             contentDescription = "Back"
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1976D2)
+                )
             )
             LaunchedEffect(otpErrorMessage) {
                 otpErrorMessage?.let {
@@ -371,6 +382,10 @@ fun RegistrationScreen(
     }
 
 }
+
+
+
+
 
 
 

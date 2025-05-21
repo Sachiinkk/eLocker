@@ -3,7 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("kotlin-kapt")
-    id("com.google.dagger.hilt.android") // ✅ Correct Hilt plugin
+    id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -80,5 +80,6 @@ dependencies {
 
     implementation ("org.bouncycastle:bcprov-jdk15to18:1.70")
     implementation("androidx.compose.ui:ui-text:1.5.0") // or match your Compose version
+
 
 }
