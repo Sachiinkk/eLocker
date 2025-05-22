@@ -38,6 +38,7 @@ fun DocumentScreen(viewModel: RegistrationViewModel, navController: NavControlle
     val issuedDocs = viewModel.issuedDocs
     val expiredDocs = viewModel.expiredDocs
     val docsToShow = if (selectedTab.value == "Issued") issuedDocs else expiredDocs
+    val isLoading = viewModel.isLoading.value
 
     val filteredDocs = docsToShow.filter {
         it.service_name.contains(searchQuery.value, ignoreCase = true)
@@ -123,6 +124,16 @@ fun DocumentScreen(viewModel: RegistrationViewModel, navController: NavControlle
             }
         }
     }
+    if (isLoading) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.3f)),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = Color.White)
+        }
+    }
 }
 
 @Composable
@@ -188,4 +199,6 @@ fun DocumentCard(
             )
         }
     }
+
+
 }

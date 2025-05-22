@@ -196,7 +196,7 @@ fun resendOtp() {
                     txn = lastTxn.trim()
                 )
 
-
+                isLoading.value = true
                 val response = repository.verifyOtp(request)
 
                 if (response.isSuccessful) {
@@ -217,7 +217,7 @@ fun resendOtp() {
                         // Save Aadhaar user info
                         body.data?.poi?.let { poi ->
                             name.value = poi.name.orEmpty()
-                            gender.value = poi.gender.orEmpty()
+                            if (gender.value.isBlank()) gender.value = poi.gender.orEmpty()
                             dateOfBirth.value = poi.dob.orEmpty()
                         }
 
@@ -230,7 +230,7 @@ fun resendOtp() {
                         message.value = "✅ OTP Verified"
                         showSuccessDialog.value = true
                         showOtpPopup.value = false
-
+                        isLoading.value = false
 
                     } else {
                         message.value = "❌ Verification token missing"

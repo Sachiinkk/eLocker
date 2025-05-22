@@ -21,7 +21,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.elocker.R
+import com.example.elocker.viewmodel.RegistrationViewModel
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,6 +33,7 @@ fun OtpPopupCard(
     onOtpValueChange: (String) -> Unit,
     onSubmitOtp: (String) -> Unit,
     onDismissRequest: () -> Unit,
+    isLoading: Boolean,
     onResendOtp: () -> Unit
 ) {
     val focusRequesters = remember { List(6) { FocusRequester() } }
@@ -189,21 +192,29 @@ fun OtpPopupCard(
                         .fillMaxWidth()
                         .height(50.dp)
                 ) {
-                    Text(text = "Submit", fontSize = 16.sp)
+                    if (isLoading)
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    else
+                        Text(text = "Submit", fontSize = 16.sp)
+
                 }
             }
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewOtpPopupCard() {
-    OtpPopupCard(
-        otpValue = "34238",
-        onOtpValueChange = {},
-        onSubmitOtp = {},
-        onDismissRequest = {},
-        onResendOtp = {}
-    )
-}
+//@Preview(showBackground = true)
+//@Composable
+//fun PreviewOtpPopupCard() {
+//    OtpPopupCard(
+//        otpValue = "34238",
+//        onOtpValueChange = {},
+//        onSubmitOtp = {},
+//        onDismissRequest = {},
+//        onResendOtp = {}
+//    )
+//}

@@ -359,9 +359,10 @@ fun RegistrationScreen(
                     // Don't dismiss on outside touch or ESC press
                     onDismissRequest = {
                     },
-                            onResendOtp = {
+                    onResendOtp = {
                         viewModel.resendOtp()
-                    }
+                    },
+                    isLoading = viewModel.isLoading.value
                 )
             }
 
