@@ -157,3 +157,56 @@ This module provides a secure OTP-based Aadhaar authentication system built usin
 - **Endpoint:** `POST /Fetch-elocker`
 - **Description:** Retrieves user documentation and related metadata.
 - **Function Used:** `getUserDetails()`
+
+
+ Document Viewer
+- Tabs: **Issued / Expired** based on `valid_upto` date.
+- Search bar filters by `service_name`.
+- "View" button fetches Base64 PDF and navigates to PDF viewer screen.
+
+ PDF Viewer
+- Uses `AndroidPdfViewer` to render Base64-decoded PDF in Compose using `AndroidView`.
+
+## ⚙️ Technical Details
+
+### Tech Stack:
+- Jetpack Compose
+- ViewModel + StateFlow
+- Retrofit + Gson
+- OkHttp Interceptor (for API logs)
+- PDF Viewer: [barteksc/AndroidPdfViewer](https://github.com/barteksc/AndroidPdfViewer)
+
+## 🔄 Key Improvements Added
+
+### ✔️ Loading Spinners:
+- Submit button shows spinner during OTP verification.
+- Full-screen overlay spinner during PDF fetch after "View" click.
+
+### ✔️ Safe Autofill:
+- Fields like DOB/Gender are only auto-filled **if empty** to avoid overwriting user input.
+
+### ✔️ API Debug Logs:
+- `Log.d()` added for:
+  - Aadhaar verification
+  - Token/vaultKey values
+  - User document fetch
+  - PDF response content
+
+## 🔐 Auth Handling
+- Token is hardcoded (from Postman) for consistent debugging.
+- `aadhar_verification_id` (vaultKey) passed for identity match.
+
+## 🧪 Testing Checklist
+
+| Action                       | Status |
+|-----------------------------|--------|
+| OTP triggers + popup shows  | ✅     |
+| Submit OTP → verify + load | ✅     |
+| Registration form validation| ✅     |
+| Fetch docs using token      | ✅     |
+| PDF loads on click "View"   | ✅     |
+| Spinners during API calls   | ✅     |
+
+---
+
+Let me know if you want to add logout, dark mode, XML migration, or full offline caching support next.
